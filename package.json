@@ -1,0 +1,6 @@
+{
+  "name": "policy-ai-team",
+  "private": true,
+  "version": "1.0.0",
+  "description": "정책제안 AI 상황실 — 역할별 AI 에이전트 팀이 정책제안서/국책과제 기획을 협업으로 조사·작성하는 웹앱"
+}

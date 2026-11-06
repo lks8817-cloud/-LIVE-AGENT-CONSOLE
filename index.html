@@ -1,0 +1,897 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>정책제안 AI 상황실</title>
+<style>
+:root{
+  --bg:#0f1511;
+  --panel:#161d18;
+  --panel-head:#1d2621;
+  --ink:#f3f1e8;
+  --muted:#9fa9a2;
+  --line:#2a332d;
+  --navy:#6fa0d8;
+  --navy-ink:#13202e;
+  --seal:#e8815c;
+  --seal-ink:#2d1811;
+  --gold:#d9b35c;
+  --good:#7ecb9c;
+  --good-ink:#0f241a;
+  --amber-glow: 0 0 0 1px rgba(217,179,92,.5);
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){
+    --bg:#eef1ea; --panel:#ffffff; --panel-head:#f5f3ea; --ink:#1b231d; --muted:#616b62;
+    --line:#d7d7c8; --navy:#1f3a5c; --navy-ink:#eaf0f8; --seal:#b5472d; --seal-ink:#fdeee6;
+    --gold:#8a6a1e; --good:#2f6b4f; --good-ink:#e6f3ec;
+    color-scheme: light;
+  }
+}
+:root[data-theme="light"]{
+  --bg:#eef1ea; --panel:#ffffff; --panel-head:#f5f3ea; --ink:#1b231d; --muted:#616b62;
+  --line:#d7d7c8; --navy:#1f3a5c; --navy-ink:#eaf0f8; --seal:#b5472d; --seal-ink:#fdeee6;
+  --gold:#8a6a1e; --good:#2f6b4f; --good-ink:#e6f3ec;
+  color-scheme: light;
+}
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+*{box-sizing:border-box;}
+html,body{background:var(--bg); margin:0;}
+body{
+  font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto Sans KR',-apple-system,sans-serif;
+  color:var(--ink); background:var(--bg);
+  padding-left:max(16px, env(safe-area-inset-left,0px));
+  padding-right:max(16px, env(safe-area-inset-right,0px));
+  background-image: radial-gradient(ellipse at top, color-mix(in srgb, var(--navy) 10%, transparent), transparent 55%);
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1320px; margin:0 auto; padding-bottom:40px;}
+h1,h2,h3{font-family:inherit; font-weight:800; text-wrap:balance; margin:0; letter-spacing:-.01em;}
+p{line-height:1.7; margin:0;}
+
+.cmdbar{
+  position:sticky; top:env(safe-area-inset-top,0px); z-index:20;
+  background:color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line); padding-block:16px 14px; margin-bottom:18px;
+}
+.cmdbar-top{display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; flex-wrap:wrap;}
+.brand{display:flex; align-items:baseline; gap:10px;}
+.brand .dot{width:9px; height:9px; border-radius:50%; background:var(--seal); box-shadow:0 0 8px var(--seal); flex-shrink:0;}
+.brand h1{font-size:clamp(17px,2.4vw,21px); font-weight:700; color:var(--ink);}
+.brand .sub{font-size:11px; color:var(--muted); letter-spacing:.06em;}
+.rail{display:flex; align-items:center; gap:5px; overflow-x:auto; flex-shrink:0;}
+.rail-dot{width:7px; height:7px; border-radius:50%; background:var(--line); flex-shrink:0; transition:background .2s;}
+.rail-dot.working{background:var(--gold); animation:pulse 1s infinite ease-in-out;}
+.rail-dot.done{background:var(--good);}
+.rail-dot.error{background:var(--seal);}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+
+.cmdrow{display:flex; gap:10px; flex-wrap:wrap; align-items:flex-start;}
+.cmdrow input[type=text]{
+  flex:1 1 280px; min-width:0; font-size:14.5px; padding:11px 13px; border-radius:7px;
+  border:1.5px solid var(--line); background:var(--panel); color:var(--ink); font-family:inherit;
+}
+.cmdrow input:focus-visible{outline:2px solid var(--seal); outline-offset:1px;}
+.runbtn{
+  font-family:'JetBrains Mono',monospace; font-weight:700; font-size:13px; letter-spacing:.02em;
+  padding:11px 20px; border-radius:7px; border:none; background:var(--seal); color:var(--seal-ink);
+  cursor:pointer; white-space:nowrap; transition:opacity .15s, transform .1s; flex-shrink:0;
+}
+.runbtn:active{transform:scale(.97);}
+.runbtn:disabled{opacity:.4; cursor:not-allowed;}
+.runbtn.stop{background:var(--line); color:var(--ink);}
+.toggle-ref{
+  font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--muted); background:none;
+  border:1px dashed var(--line); border-radius:7px; padding:11px 14px; cursor:pointer; flex-shrink:0;
+}
+.toggle-ref:hover{color:var(--navy); border-color:var(--navy);}
+.ref-field{margin-top:10px; display:none;}
+.ref-field.show{display:block;}
+.ref-field textarea{
+  width:100%; font-size:13px; padding:10px 12px; border-radius:7px; resize:vertical;
+  border:1.5px solid var(--line); background:var(--panel); color:var(--ink); font-family:inherit;
+  min-height:50px; line-height:1.6;
+}
+.ref-field textarea:focus-visible{outline:2px solid var(--seal); outline-offset:1px;}
+.file-row{display:flex; align-items:center; gap:10px; margin-top:8px; flex-wrap:wrap;}
+.file-btn{
+  font-size:12px; font-weight:600; padding:7px 13px; border-radius:6px; border:1px solid var(--line);
+  background:var(--panel); color:var(--navy); cursor:pointer; flex-shrink:0;
+}
+.file-btn:hover{border-color:var(--navy);}
+.file-name{font-size:12px; color:var(--muted); overflow-wrap:anywhere;}
+.file-status{font-size:11.5px; color:var(--muted); margin-top:6px;}
+.file-status.error{color:var(--seal);}
+.unavailable{font-size:13px; color:var(--seal); margin-top:10px;}
+.note{font-size:11px; color:var(--muted); margin-top:10px;}
+
+.board{
+  display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:14px;
+  margin-bottom:28px;
+}
+.win{
+  background:var(--panel); border:1px solid var(--line); border-radius:10px; overflow:hidden;
+  display:flex; flex-direction:column; height:300px; transition:box-shadow .2s, border-color .2s;
+}
+.win.working{box-shadow:var(--amber-glow); border-color:var(--gold);}
+.win.pm{grid-column:span 1;}
+.win-head{
+  display:flex; align-items:center; gap:10px; padding:11px 14px; background:var(--panel-head);
+  border-bottom:1px solid var(--line); flex-shrink:0;
+}
+.traffic{display:flex; gap:5px; flex-shrink:0;}
+.traffic span{width:8px; height:8px; border-radius:50%; background:var(--line);}
+.win.pm .traffic span:nth-child(1){background:var(--seal);}
+.win-id{flex:1; min-width:0;}
+.win-id .role{font-weight:800; font-size:13.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.win-id .no{font-family:'JetBrains Mono',monospace; color:var(--muted); font-size:11px; margin-right:5px;}
+.status-pill{
+  font-family:'JetBrains Mono',monospace; font-size:9.5px; font-weight:700; letter-spacing:.04em;
+  padding:3px 8px; border-radius:20px; flex-shrink:0; text-transform:uppercase;
+  background:var(--line); color:var(--muted);
+}
+.status-pill.working{background:color-mix(in srgb, var(--gold) 22%, transparent); color:var(--gold);}
+.status-pill.done{background:var(--good-ink); color:var(--good);}
+.status-pill.error{background:var(--seal-ink); color:var(--seal);}
+.win-body{flex:1; min-height:0; overflow-y:auto; padding:13px 14px;}
+.win-body .task{font-size:11px; color:var(--muted); margin-bottom:8px; padding-bottom:8px; border-bottom:1px dashed var(--line);}
+.win-body .out-text{font-size:12.5px; line-height:1.68; white-space:pre-wrap; color:var(--ink);}
+.win-body .out-text:empty::before{content:"대기 중…"; color:var(--muted);}
+.win-foot{
+  flex-shrink:0; border-top:1px solid var(--line); padding:9px 10px; display:none; gap:6px;
+  background:var(--panel-head);
+}
+.win-foot.show{display:flex;}
+.win-foot textarea{
+  flex:1; min-width:0; font-size:12px; padding:7px 9px; border-radius:6px; resize:none;
+  border:1.5px solid var(--line); background:var(--bg); color:var(--ink); font-family:inherit; height:32px;
+}
+.win-foot textarea:focus-visible{outline:2px solid var(--seal); outline-offset:1px;}
+.win-foot button{
+  font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:700; padding:0 12px; border-radius:6px;
+  border:1.5px solid var(--navy); background:transparent; color:var(--navy); cursor:pointer; flex-shrink:0;
+}
+.win-foot button:hover:not(:disabled){background:var(--navy); color:var(--navy-ink);}
+.win-foot button:disabled{opacity:.4; cursor:not-allowed;}
+
+.win.final{
+  grid-column:1/-1; height:auto; min-height:220px; max-height:440px;
+  border-color:var(--navy);
+}
+.win.final .win-head{background:var(--navy-ink);}
+.win.final .traffic span{background:var(--navy);}
+.win.final .role{color:var(--navy);}
+.export-btn{
+  font-family:'JetBrains Mono',monospace; font-size:10.5px; font-weight:700; letter-spacing:.02em;
+  padding:5px 11px; border-radius:20px; border:none; background:var(--seal); color:var(--seal-ink);
+  cursor:pointer; flex-shrink:0; white-space:nowrap;
+}
+.export-btn:disabled{opacity:.35; cursor:not-allowed;}
+
+.info{margin-top:8px;}
+.info summary{
+  cursor:pointer; list-style:none; font-size:12.5px; color:var(--muted); padding:10px 0;
+  display:flex; align-items:center; gap:8px; border-top:1px solid var(--line);
+}
+.info summary::-webkit-details-marker{display:none;}
+.info summary::before{content:"▸"; font-family:'JetBrains Mono',monospace;}
+.info[open] summary::before{content:"▾";}
+.info-body{padding-block:16px 24px; display:grid; gap:20px;}
+.info-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:10px;}
+.info-card{border:1px solid var(--line); border-radius:8px; padding:13px; font-size:12px; line-height:1.6; background:var(--panel);}
+.info-card strong{display:block; font-size:12.5px; margin-bottom:4px; color:var(--ink);}
+.info-card span.lbl{font-size:10px; letter-spacing:.06em; color:var(--seal); font-weight:700; text-transform:uppercase; margin-bottom:5px; display:block;}
+.foot-note{font-size:10.5px; color:var(--muted); padding-top:14px;}
+
+@media (max-width:640px){
+  .info-grid{grid-template-columns:1fr;}
+  .cmdrow input[type=text]{flex-basis:100%;}
+  .runbtn, .toggle-ref{width:100%;}
+  .win{height:260px;}
+}
+
+@media (min-width:700px){
+  html, body{height:100%; overflow:hidden;}
+  .wrap{height:100%; max-height:100%; display:flex; flex-direction:column; padding-bottom:10px; overflow:hidden;}
+  .cmdbar{position:static; flex-shrink:0; margin-bottom:10px;}
+  .board{flex:1; min-height:0; margin-bottom:0; display:grid; gap:10px;}
+  .win{height:auto; min-height:0;}
+  .win.final{grid-column:auto; height:auto; min-height:0; max-height:none;}
+  .win-body{padding:10px 12px;}
+  .info, .foot-note{display:none;}
+}
+@media (min-width:700px) and (max-width:1099.98px){
+  .board{grid-template-columns:repeat(2,1fr); grid-template-rows:repeat(5,1fr);}
+}
+@media (min-width:1100px){
+  .board{grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,1fr);}
+}
+:focus-visible{outline:2px solid var(--seal); outline-offset:2px;}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <div class="cmdbar">
+    <div class="cmdbar-top">
+      <div class="brand"><span class="dot"></span><h1>정책제안 AI 상황실</h1><span class="sub">LIVE AGENT CONSOLE</span></div>
+      <div class="rail" id="rail"></div>
+    </div>
+    <div class="cmdrow">
+      <input id="topicInput" type="text" placeholder="과제 주제 입력 — 예: 지역 수소 모빌리티 실증사업" maxlength="120" />
+      <button type="button" class="toggle-ref" id="toggleRef">+ 기존 과제/공고 첨부</button>
+      <button class="runbtn" id="runBtn">전 요원 투입</button>
+    </div>
+    <div class="ref-field" id="refField">
+      <textarea id="refInput" placeholder="예: 2024년 산업통상자원부 수소특화단지 조성사업 공고, 또는 참고할 기존 과제명·사업공고 내용을 붙여넣으세요" maxlength="4000"></textarea>
+      <div class="file-row">
+        <label class="file-btn" for="refFile">파일 첨부 (.txt · .md · .pdf)</label>
+        <input type="file" id="refFile" accept=".txt,.md,.csv,.json,.pdf" hidden />
+        <span class="file-name" id="fileName"></span>
+      </div>
+      <p class="file-status" id="fileStatus" hidden></p>
+    </div>
+    <p class="unavailable" id="unavailableMsg" hidden></p>
+    <p class="note">※ AI가 즉석에서 생성하는 시뮬레이션입니다. 실제 공공 데이터베이스와 연동되어 있지 않으므로 수치·법령·기업명은 원문으로 재검증하세요.</p>
+  </div>
+
+  <div class="board" id="board"></div>
+
+  <details class="info">
+    <summary>이 서비스에 대해 더 보기 — 핵심 차별점 · 예상 고객</summary>
+    <div class="info-body">
+      <div class="info-grid">
+        <div class="info-card"><span class="lbl">자금 규칙 엔진</span><strong>부처별 자금 구조 자동 설계</strong>출연·보조·융자·매칭 등 부처마다 다른 지원 방식을 구조화합니다.</div>
+        <div class="info-card"><span class="lbl">근거 추적성</span><strong>출처가 달린 분석</strong>모든 수치와 주장에 출처를 연결해 공공 문서에 필요한 신뢰도를 확보합니다.</div>
+        <div class="info-card"><span class="lbl">팀 단위 협업</span><strong>역할 분담 + 교차 검증</strong>단일 챗봇이 아닌 8개 역할 팀이라 결과가 깊고 검증 단계가 내장됩니다.</div>
+      </div>
+      <div class="info-grid">
+        <div class="info-card"><span class="lbl">공공</span>지자체 정책기획 부서, 테크노파크, 출연연 기획팀</div>
+        <div class="info-card"><span class="lbl">민간</span>국책과제를 준비하는 중소·중견기업, 대학 산학협력단</div>
+        <div class="info-card"><span class="lbl">컨설팅</span>정책 컨설팅 기업의 생산성 도구로 활용</div>
+      </div>
+    </div>
+  </details>
+  <p class="foot-note">AI 정책제안 전문가팀 — 개념 데모 콘솔 · 실제 서비스는 공공 API·크롤링 연동과 사람 검토 단계가 추가로 필요합니다.</p>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+(function(){
+  var AGENTS = [
+    {key:'pm', no:'①', pm:true, role:'PM (총괄)', task:'과제 목표 정의 · 업무 분배 · 전체 방향 수립'},
+    {key:'researcher', no:'②', role:'정책·과제 리서처', task:'국정과제·부처 계획 정합성, 담당 부처·전문기관 매핑, 유사 선행과제'},
+    {key:'finance', no:'③', role:'재정·예산 전문가', task:'출연·보조·융자·매칭 자금 구조 설계, 연차별 예산안'},
+    {key:'industry', no:'④', role:'산업·기업 발굴가', task:'참여 가능 기업 후보 탐색, 컨소시엄 구성 제안'},
+    {key:'data', no:'⑤', role:'데이터·예측 분석가', task:'시장 규모·수요 전망, 경제적 파급효과, 성과지표(KPI) 설계'},
+    {key:'governance', no:'⑥', role:'추진체계 설계자', task:'주관·참여·수요기관 역할 분담, 지원조직 구성안'},
+    {key:'foresight', no:'⑦', role:'해외 R&D·기술예측 분석가', task:'해외 연구개발 동향, 기초과학~산업화 초기 단계 기술성숙도, 미래 기술예측'},
+    {key:'coordinator', no:'⑧', role:'교차검증·협업 조정관', task:'요원 간 결과 충돌 점검 — 필요 시 해당 요원에게 수정 피드백 전달'},
+    {key:'writer', no:'⑨', role:'작성·검토자', task:'제안서 종합 — 첨부 양식이 있으면 그 형식, 없으면 자유형식', final:true}
+  ];
+
+  var board = document.getElementById('board');
+  var rail = document.getElementById('rail');
+  var els = {};
+
+  AGENTS.forEach(function(a){
+    var win = document.createElement('div');
+    win.className = 'win' + (a.pm ? ' pm' : '') + (a.final ? ' final' : '');
+    win.innerHTML =
+      '<div class="win-head">'+
+        '<div class="traffic"><span></span><span></span><span></span></div>'+
+        '<div class="win-id"><span class="role"><span class="no">'+a.no+'</span>'+a.role+'</span></div>'+
+        (a.final ? '<button type="button" class="export-btn" data-export disabled>PDF로 내보내기</button>' : '')+
+        '<div class="status-pill" data-pill>대기</div>'+
+      '</div>'+
+      '<div class="win-body" data-body>'+
+        '<div class="task">'+a.task+'</div>'+
+        '<div class="out-text" data-text></div>'+
+      '</div>'+
+      '<div class="win-foot" data-foot>'+
+        '<textarea data-fb-input placeholder="의견이나 추가 지시 입력"></textarea>'+
+        '<button type="button" data-fb-btn>반영</button>'+
+      '</div>';
+    board.appendChild(win);
+
+    var railDot = document.createElement('div');
+    railDot.className = 'rail-dot';
+    railDot.title = a.role;
+    rail.appendChild(railDot);
+
+    var fbInput = win.querySelector('[data-fb-input]');
+    var fbBtn = win.querySelector('[data-fb-btn]');
+    fbBtn.addEventListener('click', function(){ reviseAgent(a.key); });
+    fbInput.addEventListener('keydown', function(ev){
+      if(ev.key === 'Enter' && (ev.metaKey || ev.ctrlKey)){ ev.preventDefault(); reviseAgent(a.key); }
+    });
+
+    var exportBtn = win.querySelector('[data-export]');
+    if(exportBtn) exportBtn.addEventListener('click', exportPdf);
+
+    els[a.key] = {
+      win: win,
+      pill: win.querySelector('[data-pill]'),
+      body: win.querySelector('[data-body]'),
+      text: win.querySelector('[data-text]'),
+      dot: railDot,
+      foot: win.querySelector('[data-foot]'),
+      fbInput: fbInput,
+      fbBtn: fbBtn,
+      exportBtn: exportBtn
+    };
+  });
+
+  var refInput = document.getElementById('refInput');
+  var refFile = document.getElementById('refFile');
+  var fileName = document.getElementById('fileName');
+  var fileStatus = document.getElementById('fileStatus');
+
+  var PDFJS_VERSION = '3.11.174';
+  var pdfjsReady = null;
+  function loadScript(src){
+    return new Promise(function(resolve, reject){
+      var s = document.createElement('script');
+      s.src = src; s.onload = resolve; s.onerror = reject;
+      document.head.appendChild(s);
+    });
+  }
+  function ensurePdfJs(){
+    if(!pdfjsReady){
+      pdfjsReady = loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/'+PDFJS_VERSION+'/pdf.min.js').then(function(){
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/'+PDFJS_VERSION+'/pdf.worker.min.js';
+      });
+    }
+    return pdfjsReady;
+  }
+  async function extractPdfText(buf){
+    await ensurePdfJs();
+    var pdf = await window.pdfjsLib.getDocument({data: buf}).promise;
+    var maxPages = Math.min(pdf.numPages, 20);
+    var text = '';
+    for(var i=1;i<=maxPages;i++){
+      var page = await pdf.getPage(i);
+      var content = await page.getTextContent();
+      text += content.items.map(function(it){ return it.str; }).join(' ') + '\n';
+      if(text.length > 12000) break;
+    }
+    return text.trim().slice(0, 12000);
+  }
+
+  refFile.addEventListener('change', async function(){
+    var f = refFile.files[0];
+    if(!f) return;
+    fileName.textContent = f.name;
+    fileStatus.hidden = false;
+    fileStatus.classList.remove('error');
+    fileStatus.textContent = '파일 내용을 읽는 중…';
+    try{
+      var ext = f.name.split('.').pop().toLowerCase();
+      var text = '';
+      if(ext === 'pdf'){
+        text = await extractPdfText(await f.arrayBuffer());
+      }else if(['txt','md','csv','json'].indexOf(ext) !== -1){
+        text = (await f.text()).trim();
+      }else{
+        fileStatus.textContent = '지원하지 않는 파일 형식입니다. txt·md·pdf 파일을 사용하거나 내용을 직접 붙여넣어주세요.';
+        fileStatus.classList.add('error');
+        return;
+      }
+      if(!text){
+        fileStatus.textContent = '파일에서 텍스트를 추출하지 못했습니다. 스캔 이미지로만 된 PDF일 수 있습니다 — 내용을 직접 붙여넣어주세요.';
+        fileStatus.classList.add('error');
+        return;
+      }
+      var marker = '[첨부파일: '+f.name+']\n';
+      var existing = refInput.value.trim();
+      refInput.value = (existing ? existing + '\n\n' : '') + marker + text;
+      fileStatus.textContent = '"'+f.name+'"에서 '+text.length.toLocaleString()+'자를 불러와 위 입력란에 추가했습니다.';
+    }catch(err){
+      fileStatus.textContent = '파일을 읽는 중 오류가 발생했습니다. 다시 시도하거나 내용을 직접 붙여넣어주세요.';
+      fileStatus.classList.add('error');
+    }
+  });
+
+  var toggleRefBtn = document.getElementById('toggleRef');
+  var refField = document.getElementById('refField');
+  toggleRefBtn.addEventListener('click', function(){
+    var show = !refField.classList.contains('show');
+    refField.classList.toggle('show', show);
+    toggleRefBtn.textContent = show ? '− 기존 과제/공고 닫기' : '+ 기존 과제/공고 첨부';
+    if(show) refInput.focus();
+  });
+
+  function setStatus(key, status){
+    var e = els[key];
+    e.win.classList.remove('working','done','error');
+    e.pill.classList.remove('working','done','error');
+    e.dot.classList.remove('working','done','error');
+    if(status === 'idle'){
+      e.pill.textContent = '대기';
+      e.foot.classList.remove('show');
+      e.fbInput.value = '';
+      if(e.exportBtn) e.exportBtn.disabled = true;
+      return;
+    }
+    e.win.classList.add(status);
+    e.pill.classList.add(status);
+    e.dot.classList.add(status);
+    e.pill.textContent = status === 'working' ? '작업중' : status === 'done' ? '완료' : '오류';
+    if(status === 'working'){
+      e.fbBtn.disabled = true;
+      e.fbInput.disabled = true;
+      if(e.exportBtn) e.exportBtn.disabled = true;
+    } else {
+      e.fbBtn.disabled = !!running;
+      e.fbInput.disabled = !!running;
+      if(status === 'done') e.foot.classList.add('show');
+      if(e.exportBtn) e.exportBtn.disabled = (status !== 'done') || !!running;
+    }
+  }
+
+  function unlockFeedback(){
+    AGENTS.forEach(function(a){
+      var e = els[a.key];
+      var working = e.win.classList.contains('working');
+      e.fbBtn.disabled = working;
+      e.fbInput.disabled = working;
+      if(e.exportBtn) e.exportBtn.disabled = !e.win.classList.contains('done');
+    });
+  }
+
+  var BASE_FONT = 12.5;
+  var MIN_FONT = 8.5;
+
+  function fitText(key){
+    var e = els[key];
+    e.text.style.fontSize = BASE_FONT + 'px';
+    var size = BASE_FONT;
+    var tries = 0;
+    while(e.body.scrollHeight > e.body.clientHeight + 1 && size > MIN_FONT && tries < 40){
+      size -= 0.5;
+      e.text.style.fontSize = size + 'px';
+      tries++;
+    }
+  }
+
+  function updateText(key, text){
+    var e = els[key];
+    e.text.textContent = text;
+    e.body.scrollTop = e.body.scrollHeight;
+    if(e._raf) cancelAnimationFrame(e._raf);
+    e._raf = requestAnimationFrame(function(){ fitText(key); });
+  }
+
+  function resetBoard(){
+    AGENTS.forEach(function(a){
+      setStatus(a.key, 'idle');
+      els[a.key].text.style.fontSize = '';
+      updateText(a.key, '');
+    });
+  }
+
+  var runBtn = document.getElementById('runBtn');
+  var topicInput = document.getElementById('topicInput');
+  var unavailableMsg = document.getElementById('unavailableMsg');
+  var running = false;
+  var currentController = null;
+
+  /* server-backed replacement for the claude.ai artifact's window.claude.use('sample') API */
+  async function sample(prompt, opts){
+    opts = opts || {};
+    var res;
+    try{
+      res = await fetch('/api/sample', {
+        method: 'POST',
+        headers: {'content-type':'application/json'},
+        body: JSON.stringify({prompt: prompt}),
+        signal: opts.signal
+      });
+    }catch(err){
+      if(err && err.name === 'AbortError') throw err;
+      var netErr = new Error('네트워크 오류');
+      netErr.code = 'unavailable';
+      throw netErr;
+    }
+    if(!res.ok){
+      var text = await res.text().catch(function(){ return ''; });
+      var err2 = new Error(text || ('HTTP ' + res.status));
+      err2.code = res.status === 429 ? 'rate_limited' : 'unavailable';
+      throw err2;
+    }
+    var reader = res.body.getReader();
+    var decoder = new TextDecoder();
+    var full = '';
+    while(true){
+      var chunk = await reader.read();
+      if(chunk.done) break;
+      full += decoder.decode(chunk.value, {stream:true});
+      if(opts.onText) opts.onText({text: full});
+    }
+    return {text: full};
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function inlineMd(s){
+    return escapeHtml(s).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  }
+
+  function isTableRow(line){ return /^\s*\|.*\|\s*$/.test(line); }
+  function isTableSep(line){ return /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)+\|?\s*$/.test(line); }
+  function splitRow(line){
+    return line.trim().replace(/^\|/,'').replace(/\|$/,'').split('|').map(function(c){ return c.trim(); });
+  }
+
+  /* lightweight markdown-ish → HTML so tables, headings, lists and bold render as real elements in the exported PDF instead of raw pipe/asterisk text */
+  function mdToHtml(text){
+    var lines = text.replace(/\r\n/g,'\n').split('\n');
+    var html = '', i = 0, inList = false;
+    function closeList(){ if(inList){ html += '</ul>'; inList = false; } }
+    while(i < lines.length){
+      var raw = lines[i], line = raw.trim();
+
+      if(isTableRow(line) && i+1 < lines.length && isTableSep(lines[i+1])){
+        closeList();
+        var header = splitRow(line);
+        var j = i + 2, rows = [];
+        while(j < lines.length && isTableRow(lines[j])){ rows.push(splitRow(lines[j])); j++; }
+        html += '<table style="width:100%;border-collapse:collapse;margin:14px 0;font-size:11.5px;table-layout:fixed;">'+
+          '<thead><tr>'+header.map(function(c){
+            return '<th style="border:1px solid #333;padding:6px 8px;background:#e9efe7;text-align:left;font-weight:700;word-break:break-word;">'+inlineMd(c)+'</th>';
+          }).join('')+'</tr></thead><tbody>'+
+          rows.map(function(r){
+            return '<tr>'+r.map(function(c){
+              return '<td style="border:1px solid #333;padding:6px 8px;vertical-align:top;word-break:break-word;">'+inlineMd(c)+'</td>';
+            }).join('')+'</tr>';
+          }).join('')+
+          '</tbody></table>';
+        i = j;
+        continue;
+      }
+
+      if(/^(■|●|#{1,3})\s*/.test(line) && line){
+        closeList();
+        var headText = line.replace(/^#{1,3}\s*/,'').replace(/^■\s*/,'').replace(/^●\s*/,'');
+        html += '<h3 style="font-size:15px;font-weight:800;margin:18px 0 8px;color:#16201a;">'+inlineMd(headText)+'</h3>';
+        i++; continue;
+      }
+
+      if(/^[-•]\s+/.test(line)){
+        if(!inList){ html += '<ul style="margin:2px 0 12px 20px;padding:0;">'; inList = true; }
+        html += '<li style="margin-bottom:4px;">'+inlineMd(line.replace(/^[-•]\s+/,''))+'</li>';
+        i++; continue;
+      }
+
+      closeList();
+      if(line === ''){ html += '<div style="height:6px;"></div>'; }
+      else{ html += '<p style="margin:0 0 10px;">'+inlineMd(line)+'</p>'; }
+      i++;
+    }
+    closeList();
+    return html;
+  }
+
+  async function exportPdf(){
+    var e = els.writer;
+    var btn = e.exportBtn;
+    if(!btn || btn.disabled) return;
+    var finalText = e.text.textContent.trim();
+    if(!finalText) return;
+    var original = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '생성 중…';
+    var container = null;
+    try{
+      if(typeof window.html2canvas !== 'function' || !window.jspdf){
+        throw {code:'unavailable'};
+      }
+
+      var topic = topicInput.value.trim() || '정책제안';
+      var dateStr = new Date().toLocaleDateString('ko-KR');
+
+      container = document.createElement('div');
+      container.style.cssText = 'position:fixed; left:-9999px; top:0; width:794px; background:#ffffff; color:#16201a; padding:56px 60px;'+
+        'font-family:"Malgun Gothic","맑은 고딕","Apple SD Gothic Neo","Noto Sans KR",sans-serif;';
+      container.innerHTML =
+        '<div style="border-bottom:3px solid #1f3a5c; padding-bottom:18px; margin-bottom:28px;">'+
+          '<div style="font-size:11px; color:#8a8a8a; letter-spacing:.08em;">정책제안 AI 상황실 — 자동 생성 초안</div>'+
+          '<h1 style="font-size:25px; margin:10px 0 0; font-weight:800; color:#16201a;">'+escapeHtml(topic)+'</h1>'+
+          '<div style="font-size:11.5px; color:#8a8a8a; margin-top:8px;">작성일 '+dateStr+'</div>'+
+        '</div>'+
+        '<div style="font-size:13px; line-height:1.85;">'+mdToHtml(finalText)+'</div>';
+      document.body.appendChild(container);
+
+      var canvas = await window.html2canvas(container, {scale:2, backgroundColor:'#ffffff', useCORS:true});
+
+      var jsPDF = window.jspdf.jsPDF;
+      var pdf = new jsPDF({unit:'pt', format:'a4'});
+      var pageW = pdf.internal.pageSize.getWidth();
+      var pageH = pdf.internal.pageSize.getHeight();
+      var imgW = pageW;
+      var imgH = canvas.height * imgW / canvas.width;
+      var heightLeft = imgH;
+      var position = 0;
+      var imgData = canvas.toDataURL('image/png');
+
+      pdf.addImage(imgData, 'PNG', 0, position, imgW, imgH);
+      heightLeft -= pageH;
+      while(heightLeft > 0){
+        position = heightLeft - imgH;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgW, imgH);
+        heightLeft -= pageH;
+      }
+
+      var blob = pdf.output('blob');
+      var safeTopic = topic.replace(/[\\/:*?"<>|]/g, '').trim().slice(0, 60) || '정책제안';
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = safeTopic + '_제안서.pdf';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
+      btn.textContent = '저장됨 ✓';
+    }catch(err){
+      btn.textContent = '내보내기 실패';
+    }finally{
+      if(container && container.parentNode) container.parentNode.removeChild(container);
+      setTimeout(function(){ btn.textContent = original; btn.disabled = (e.pill.textContent !== '완료'); }, 2200);
+    }
+  }
+
+  function refBlock(ref){
+    if(!ref) return '';
+    return '\n참고자료 (사용자가 제공한 기존 정책과제/지원사업 정보 — 반드시 이 내용을 우선 반영하세요):\n"""\n'+ref+'\n"""\n';
+  }
+  function pmPrompt(topic, ref){
+    return '당신은 한국 정책제안서/국책과제 기획 전문가팀의 PM입니다.\n'+
+      '주제: "'+topic+'"\n'+refBlock(ref)+'\n'+
+      '이 주제로 국책과제를 기획한다고 할 때, 아래 6개 전문 요원에게 각각 무엇을 조사·설계하라고 지시할지 한국어로 간결하게 정리하세요. 참고자료가 있다면 그 사업의 공고 요건·규모·범위에 맞춰 지시하세요.\n'+
+      '- 정책·과제 리서처\n- 재정·예산 전문가\n- 산업·기업 발굴가\n- 데이터·예측 분석가\n- 추진체계 설계자\n- 해외 R&D·기술예측 분석가\n\n'+
+      '형식: "과제 방향" 2~3문장 다음, 각 요원별 지시사항을 "- [요원명] 지시내용" 형태의 불릿으로. 전체 9줄 내외로 짧게 쓰세요.';
+  }
+  function workerPrompt(role, topic, pmBrief, instruction, ref){
+    return '당신은 한국 정책제안서 기획팀의 "'+role+'" 담당 요원입니다.\n'+
+      'PM의 지시:\n'+pmBrief+'\n\n'+
+      '과제 주제: "'+topic+'"\n'+refBlock(ref)+
+      '담당 업무: '+instruction+'\n\n'+
+      '이 업무 관점에서 조사·분석 결과를 한국어로 작성하세요. 참고자료가 주어졌다면 그 사업의 요건·규모·대상에 맞춰 구체적으로 연결하세요. 구체적인 항목을 5~7개의 짧은 불릿으로 정리하고, 가능하면 참고할 만한 대표 데이터 소스나 기관명을 괄호로 함께 표시하세요. '+
+      '실시간 데이터베이스에 연결되어 있지 않으므로 수치는 일반적인 추정치임을 전제로 작성하되, 과도한 면책 문구 없이 바로 본론만 쓰세요.';
+  }
+  function coordinatorPrompt(topic, pmBrief, worked, ref){
+    var body = worked.map(function(w){ return '■ ['+w.role+']\n'+w.text; }).join('\n\n');
+    return '당신은 정책제안 기획팀의 "교차검증·협업 조정관"입니다. 각 요원이 따로 조사한 내용이 서로 앞뒤가 맞는지 확인하는 역할입니다.\n'+
+      '과제 주제: "'+topic+'"\n'+refBlock(ref)+'\n'+
+      'PM 방향:\n'+pmBrief+'\n\n다음은 6개 전문 요원의 조사 결과입니다.\n\n'+body+'\n\n'+
+      '서로 모순되거나 앞뒤가 안 맞는 부분을 점검하세요. 특히: 예산 규모와 참여기업의 역량이 맞는지, 정책 방향과 성과지표(KPI)가 맞는지, 해외 기술동향(기초과학~산업화 단계)과 국내 추진 일정·추진체계가 시점상 맞는지, 추진체계와 참여기업의 역할이 어긋나지 않는지 확인하세요.\n\n'+
+      '수정이 필요한 요원이 있다면 아래 형식으로만, 요원별 한 줄씩 적으세요 (요원명은 정확히 다음 중에서만 사용: 정책·과제 리서처 / 재정·예산 전문가 / 산업·기업 발굴가 / 데이터·예측 분석가 / 추진체계 설계자 / 해외 R&D·기술예측 분석가):\n'+
+      '- [요원명] 구체적인 수정 지시\n\n'+
+      '모든 요원의 결과가 서로 일치해 수정이 필요 없다면 "모든 요원의 결과가 서로 일치합니다. 수정 불필요." 한 줄만 쓰세요. 그 외 설명은 쓰지 마세요.';
+  }
+  function parseCoordinatorFeedback(text){
+    var ROLE_TO_KEY = {
+      '정책·과제 리서처':'researcher', '재정·예산 전문가':'finance', '산업·기업 발굴가':'industry',
+      '데이터·예측 분석가':'data', '추진체계 설계자':'governance', '해외 R&D·기술예측 분석가':'foresight'
+    };
+    var map = {};
+    text.split('\n').forEach(function(line){
+      var m = line.match(/^\s*[-•]\s*\[([^\]]+)\]\s*(.+)$/);
+      if(!m) return;
+      var roleName = m[1].trim(), feedback = m[2].trim();
+      var key = ROLE_TO_KEY[roleName];
+      if(!key){
+        Object.keys(ROLE_TO_KEY).forEach(function(rn){
+          if(!key && (roleName.indexOf(rn) !== -1 || rn.indexOf(roleName) !== -1)) key = ROLE_TO_KEY[rn];
+        });
+      }
+      if(key && feedback) map[key] = feedback;
+    });
+    return map;
+  }
+  function writerPrompt(topic, pmBrief, worked, ref){
+    var body = worked.map(function(w){ return '■ '+w.role+'\n'+w.text; }).join('\n\n');
+    return '당신은 한국 정책제안서 기획팀의 "작성·검토자"입니다.\n'+
+      '과제 주제: "'+topic+'"\n'+refBlock(ref)+'\n'+
+      '다음은 PM의 방향과 교차검증을 거친 6개 전문 요원의 최종 조사 결과입니다.\n\nPM 방향:\n'+pmBrief+'\n\n'+body+'\n\n'+
+      '참고자료에 기존 사업계획서나 공고문의 목차·양식(항목 구성, 섹션 제목 등)이 포함되어 있다면 반드시 그 목차와 항목 순서를 그대로 따라 제안서 본문을 작성하세요.\n'+
+      '참고자료가 없거나 양식 정보를 알 수 없다면 다음 자유 형식을 사용하세요: ① 사업개요 ② 추진배경 및 필요성 ③ 추진목표 및 전략 ④ 추진체계 ⑤ 세부 추진계획(연차별) ⑥ 소요예산 ⑦ 기대효과 및 성과지표.\n\n'+
+      '제안서 본문 작성 후, 마지막에 "■ 평가위원 검토의견" 소제목으로 이 기획의 약점이나 보완이 필요한 지점 3가지를 짧게 지적하세요. 참고자료로 제공된 기존 사업이 있다면 그 요건과 어떻게 부합하는지도 한 줄 언급하세요. 전체 한국어로 작성하세요.';
+  }
+
+  var WORKER_INSTRUCTIONS = {
+    researcher: '국정과제·부처 중장기계획과의 정합성, 담당 가능성이 높은 부처·부서·전문기관, 유사 선행과제',
+    finance: '적합한 자금 유형(출연금/보조금/융자/지방비/민간 매칭) 조합과 대략적인 연차별 예산 배분안',
+    industry: '참여 가능한 기업 유형과 컨소시엄 구성 아이디어, 기술·재무 측면에서 확인할 포인트',
+    data: '시장 규모·수요 전망의 접근 방법, 기대되는 경제적 파급효과, 핵심 성과지표(KPI) 후보',
+    governance: '주관기관·참여기업·수요처·지원조직(센터/협의체)의 역할 분담 설계안',
+    foresight: '해외 주요국(미국·EU·일본·중국 등)의 관련 연구개발 동향과 정책 투자 흐름, 기초연구 단계부터 산업화 초기 단계까지의 기술성숙도(TRL) 추이, 향후 5~10년 기술·시장 변화에 대한 미래예측 시사점'
+  };
+
+  var lastPrompts = {};
+
+  async function runOne(key, prompt, controller){
+    lastPrompts[key] = prompt;
+    setStatus(key, 'working');
+    updateText(key, '');
+    try{
+      var result = await sample(prompt, {
+        signal: controller.signal,
+        onText: function(ev){ updateText(key, ev.text); }
+      });
+      updateText(key, result.text);
+      setStatus(key, 'done');
+      return result.text;
+    }catch(err){
+      setStatus(key, 'error');
+      var msg = (err && err.code === 'rate_limited') ? '요청이 많아 지연되고 있습니다. 잠시 후 다시 시도하세요.'
+        : (err && err.code === 'unavailable') ? ('요원 작업 중 오류가 발생했습니다: ' + (err.message || ''))
+        : '요원 작업 중 오류가 발생했습니다.';
+      updateText(key, msg);
+      throw err;
+    }
+  }
+
+  async function applyFeedback(key, feedbackLabel, feedback, controller){
+    var e = els[key];
+    var prompt = lastPrompts[key] +
+      '\n\n---\n이전 답변:\n' + e.text.textContent +
+      '\n\n'+feedbackLabel+': "' + feedback + '"\n\n위 피드백을 반영하여 답변 전체를 다시 작성하세요. 형식과 분량은 이전과 비슷하게 유지하세요.';
+    setStatus(key, 'working');
+    try{
+      var result = await sample(prompt, {
+        signal: controller.signal,
+        onText: function(ev){ updateText(key, ev.text); }
+      });
+      updateText(key, result.text);
+      lastPrompts[key] = prompt;
+      setStatus(key, 'done');
+      return result.text;
+    }catch(err){
+      setStatus(key, 'error');
+      updateText(key, '의견 반영 중 오류가 발생했습니다. 다시 시도해주세요.');
+      return e.text.textContent;
+    }
+  }
+
+  async function reviseAgent(key){
+    var e = els[key];
+    var feedback = e.fbInput.value.trim();
+    if(!feedback || !lastPrompts[key] || running) return;
+    running = true;
+    runBtn.disabled = true;
+    try{
+      await applyFeedback(key, '사용자 피드백', feedback, new AbortController());
+      e.fbInput.value = '';
+      var workerKeys = ['researcher','finance','industry','data','governance','foresight'];
+      if(key === 'pm' || workerKeys.indexOf(key) !== -1){
+        await continuePipelineAfter(key);
+      }
+    }finally{
+      running = false;
+      runBtn.disabled = false;
+      unlockFeedback();
+    }
+  }
+
+  var WORKER_KEYS = ['researcher','finance','industry','data','governance','foresight'];
+  var pipeline = {topic:'', ref:'', pmBrief:'', worked:[]};
+
+  async function runCoordinationAndWrite(controller){
+    if(pipeline.worked.length === 0) return;
+    var coordinatorText = await runOne('coordinator', coordinatorPrompt(pipeline.topic, pipeline.pmBrief, pipeline.worked, pipeline.ref), controller);
+    var feedbackMap = parseCoordinatorFeedback(coordinatorText);
+    var reviseKeys = Object.keys(feedbackMap);
+    if(reviseKeys.length > 0){
+      await Promise.allSettled(reviseKeys.map(function(k){
+        return applyFeedback(k, '교차검증 조정관의 협업 피드백', feedbackMap[k], controller).then(function(newText){
+          var w = pipeline.worked.find(function(w){ return w.role === AGENTS.find(function(a){return a.key===k;}).role; });
+          if(w) w.text = newText;
+        });
+      }));
+    }
+    await runOne('writer', writerPrompt(pipeline.topic, pipeline.pmBrief, pipeline.worked, pipeline.ref), controller);
+  }
+
+  async function continuePipelineAfter(key){
+    var controller = new AbortController();
+    currentController = controller;
+    try{
+      if(key === 'pm'){
+        pipeline.pmBrief = els.pm.text.textContent;
+        var settled = await Promise.allSettled(WORKER_KEYS.map(function(k){
+          return runOne(k, workerPrompt(AGENTS.find(function(a){return a.key===k;}).role, pipeline.topic, pipeline.pmBrief, WORKER_INSTRUCTIONS[k], pipeline.ref), controller);
+        }));
+        pipeline.worked = [];
+        settled.forEach(function(s, i){
+          if(s.status === 'fulfilled'){
+            pipeline.worked.push({role: AGENTS.find(function(a){return a.key===WORKER_KEYS[i];}).role, text: s.value});
+          }
+        });
+      }else{
+        var role = AGENTS.find(function(a){return a.key===key;}).role;
+        var w = pipeline.worked.find(function(w){ return w.role === role; });
+        var newText = els[key].text.textContent;
+        if(w){ w.text = newText; } else { pipeline.worked.push({role: role, text: newText}); }
+      }
+      await runCoordinationAndWrite(controller);
+    }catch(err){
+      // inline errors already shown per-panel
+    }finally{
+      currentController = null;
+    }
+  }
+
+  async function startRun(){
+    var topic = topicInput.value.trim();
+    var ref = refInput.value.trim();
+    if(!topic || running) return;
+    running = true;
+    resetBoard();
+    runBtn.textContent = '작업 중단';
+    runBtn.classList.add('stop');
+    var controller = new AbortController();
+    currentController = controller;
+    pipeline = {topic: topic, ref: ref, pmBrief: '', worked: []};
+
+    try{
+      pipeline.pmBrief = await runOne('pm', pmPrompt(topic, ref), controller);
+
+      var settled = await Promise.allSettled(WORKER_KEYS.map(function(k){
+        return runOne(k, workerPrompt(AGENTS.find(function(a){return a.key===k;}).role, topic, pipeline.pmBrief, WORKER_INSTRUCTIONS[k], ref), controller);
+      }));
+
+      settled.forEach(function(s, i){
+        if(s.status === 'fulfilled'){
+          pipeline.worked.push({role: AGENTS.find(function(a){return a.key===WORKER_KEYS[i];}).role, text: s.value});
+        }
+      });
+
+      await runCoordinationAndWrite(controller);
+    }catch(err){
+      // individual agent errors are already shown inline
+    }finally{
+      running = false;
+      currentController = null;
+      runBtn.textContent = '전 요원 투입';
+      runBtn.classList.remove('stop');
+      unlockFeedback();
+    }
+  }
+
+  function stopRun(){
+    if(currentController) currentController.abort();
+    running = false;
+    runBtn.textContent = '전 요원 투입';
+    runBtn.classList.remove('stop');
+    unlockFeedback();
+  }
+
+  var resizeTimer = null;
+  window.addEventListener('resize', function(){
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function(){
+      AGENTS.forEach(function(a){ if(els[a.key].text.textContent) fitText(a.key); });
+    }, 150);
+  });
+
+  runBtn.addEventListener('click', function(){
+    if(running){ stopRun(); } else { startRun(); }
+  });
+  topicInput.addEventListener('keydown', function(e){
+    if(e.key === 'Enter' && !running) startRun();
+  });
+})();
+</script>
+</body>
+</html>
