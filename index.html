@@ -211,6 +211,47 @@ p{line-height:1.7; margin:0;}
   .board{grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,1fr);}
 }
 :focus-visible{outline:2px solid var(--seal); outline-offset:2px;}
+
+/* ---- chat widget ---- */
+.chat-fab{
+  position:fixed; right:calc(18px + env(safe-area-inset-right,0px)); bottom:calc(18px + env(safe-area-inset-bottom,0px));
+  width:52px; height:52px; border-radius:50%; border:none; background:var(--seal); color:var(--seal-ink);
+  font-size:22px; cursor:pointer; z-index:60; box-shadow:0 6px 18px rgba(0,0,0,.35);
+  display:flex; align-items:center; justify-content:center;
+}
+.chat-panel{
+  position:fixed; right:calc(16px + env(safe-area-inset-right,0px)); bottom:calc(82px + env(safe-area-inset-bottom,0px));
+  width:360px; max-width:calc(100vw - 32px); height:480px; max-height:70vh;
+  background:var(--panel); border:1px solid var(--line); border-radius:12px;
+  display:none; flex-direction:column; overflow:hidden; z-index:60; box-shadow:0 14px 44px rgba(0,0,0,.4);
+}
+.chat-panel.open{display:flex;}
+.chat-head{
+  padding:11px 14px; background:var(--panel-head); border-bottom:1px solid var(--line);
+  display:flex; align-items:center; justify-content:space-between; flex-shrink:0;
+}
+.chat-head strong{font-size:13px;}
+.chat-close{background:none; border:none; color:var(--muted); cursor:pointer; font-size:15px; padding:2px;}
+.chat-messages{flex:1; min-height:0; overflow-y:auto; padding:12px 14px; display:flex; flex-direction:column; gap:10px;}
+.chat-empty{font-size:12px; color:var(--muted); text-align:center; padding:24px 8px; line-height:1.6;}
+.chat-msg{font-size:12.5px; line-height:1.6; white-space:pre-wrap; max-width:86%; padding:8px 11px; border-radius:10px;}
+.chat-msg.user{align-self:flex-end; background:var(--navy); color:var(--navy-ink);}
+.chat-msg.bot{align-self:flex-start; background:var(--bg); border:1px solid var(--line); color:var(--ink);}
+.chat-msg.bot:empty::before{content:"…"; color:var(--muted);}
+.chat-input-row{display:flex; gap:6px; padding:10px; border-top:1px solid var(--line); background:var(--panel-head); flex-shrink:0;}
+.chat-input-row textarea{
+  flex:1; min-width:0; resize:none; height:36px; font-size:12.5px; padding:8px 10px; border-radius:7px;
+  border:1.5px solid var(--line); background:var(--bg); color:var(--ink); font-family:inherit;
+}
+.chat-input-row textarea:focus-visible{outline:2px solid var(--seal); outline-offset:1px;}
+.chat-input-row button{
+  font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:700; padding:0 14px; border-radius:7px;
+  border:none; background:var(--seal); color:var(--seal-ink); cursor:pointer; flex-shrink:0;
+}
+.chat-input-row button:disabled{opacity:.4; cursor:not-allowed;}
+@media (max-width:640px){
+  .chat-panel{width:calc(100vw - 32px); height:60vh;}
+}
 </style>
 </head>
 <body>
@@ -258,6 +299,21 @@ p{line-height:1.7; margin:0;}
     </div>
   </details>
   <p class="foot-note">AI 정책제안 전문가팀 — 개념 데모 콘솔 · 실제 서비스는 공공 API·크롤링 연동과 사람 검토 단계가 추가로 필요합니다.</p>
+</div>
+
+<button class="chat-fab" id="chatFab" type="button" aria-label="AI 팀에게 질문하기">💬</button>
+<div class="chat-panel" id="chatPanel">
+  <div class="chat-head">
+    <strong>AI 팀에게 물어보기</strong>
+    <button class="chat-close" id="chatClose" type="button" aria-label="닫기">✕</button>
+  </div>
+  <div class="chat-messages" id="chatMessages">
+    <div class="chat-empty">진행된 조사나 최종 보고서 내용에 대해 자유롭게 물어보세요. (예: "이 예산안 근거가 뭐야?")</div>
+  </div>
+  <div class="chat-input-row">
+    <textarea id="chatInput" rows="1" placeholder="질문을 입력하세요"></textarea>
+    <button id="chatSend" type="button">전송</button>
+  </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -890,6 +946,86 @@ p{line-height:1.7; margin:0;}
   });
   topicInput.addEventListener('keydown', function(e){
     if(e.key === 'Enter' && !running) startRun();
+  });
+
+  /* ---- context-aware chat widget: lets the user ask about whatever the team has produced so far ---- */
+  var chatFab = document.getElementById('chatFab');
+  var chatPanel = document.getElementById('chatPanel');
+  var chatClose = document.getElementById('chatClose');
+  var chatMessages = document.getElementById('chatMessages');
+  var chatInput = document.getElementById('chatInput');
+  var chatSend = document.getElementById('chatSend');
+  var chatHistory = [];
+  var chatBusy = false;
+
+  function toggleChat(open){
+    chatPanel.classList.toggle('open', open);
+    if(open) chatInput.focus();
+  }
+  chatFab.addEventListener('click', function(){ toggleChat(!chatPanel.classList.contains('open')); });
+  chatClose.addEventListener('click', function(){ toggleChat(false); });
+
+  function buildContextSummary(){
+    var parts = [];
+    if(pipeline.topic) parts.push('과제 주제: ' + pipeline.topic);
+    if(pipeline.ref) parts.push('참고자료: ' + pipeline.ref);
+    if(pipeline.pmBrief) parts.push('PM 방향:\n' + pipeline.pmBrief);
+    if(pipeline.worked && pipeline.worked.length){
+      parts.push('요원별 조사 결과:\n' + pipeline.worked.map(function(w){ return '■ ' + w.role + '\n' + w.text; }).join('\n\n'));
+    }
+    var coordinatorText = els.coordinator && els.coordinator.text.textContent;
+    if(coordinatorText) parts.push('교차검증 결과:\n' + coordinatorText);
+    var finalText = els.writer && els.writer.text.textContent;
+    if(finalText) parts.push('최종 제안서:\n' + finalText);
+    if(!parts.length) return '(아직 실행된 조사나 보고서가 없습니다.)';
+    return parts.join('\n\n---\n\n');
+  }
+
+  function appendChatMsg(role, text){
+    var empty = chatMessages.querySelector('.chat-empty');
+    if(empty) empty.remove();
+    var div = document.createElement('div');
+    div.className = 'chat-msg ' + (role === 'user' ? 'user' : 'bot');
+    div.textContent = text;
+    chatMessages.appendChild(div);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+    return div;
+  }
+
+  function chatPrompt(question){
+    var history = chatHistory.slice(-6).map(function(m){ return (m.role === 'user' ? '사용자: ' : 'AI 팀: ') + m.text; }).join('\n');
+    return '당신은 정책제안 AI 상황실 팀을 대표해 사용자와 대화하는 어시스턴트입니다.\n\n'+
+      '아래는 지금까지 이 세션에서 진행된 조사·보고서 내용입니다:\n\n' + buildContextSummary() + '\n\n' +
+      (history ? ('이전 대화:\n' + history + '\n\n') : '') +
+      '사용자 질문: "' + question + '"\n\n'+
+      '위 내용을 근거로 한국어로 간결하고 구체적으로 답하세요. 내용에 없는 사실은 추측하지 말고, 근거가 없으면 없다고 말하세요.';
+  }
+
+  async function sendChat(){
+    var q = chatInput.value.trim();
+    if(!q || chatBusy) return;
+    chatBusy = true;
+    chatSend.disabled = true;
+    chatInput.value = '';
+    appendChatMsg('user', q);
+    chatHistory.push({role:'user', text:q});
+    var botDiv = appendChatMsg('bot', '');
+    try{
+      var result = await sample(chatPrompt(q), {
+        onText: function(ev){ botDiv.textContent = ev.text; chatMessages.scrollTop = chatMessages.scrollHeight; }
+      });
+      botDiv.textContent = result.text;
+      chatHistory.push({role:'assistant', text: result.text});
+    }catch(err){
+      botDiv.textContent = '답변 중 오류가 발생했습니다. 다시 시도해주세요.';
+    }finally{
+      chatBusy = false;
+      chatSend.disabled = false;
+    }
+  }
+  chatSend.addEventListener('click', sendChat);
+  chatInput.addEventListener('keydown', function(e){
+    if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); sendChat(); }
   });
 })();
 </script>
